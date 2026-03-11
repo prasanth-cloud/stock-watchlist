@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock Watchlist MVP</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --orange: #db6d28;
+      --dark: #484f58;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 2rem;
+      font-family: 'Outfit', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .app {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.5rem;
+    }
+    .form {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+    .form input {
+      padding: 0.6rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+    }
+    .form input::placeholder { color: var(--muted); }
+    .form input:focus {
+      outline: none;
+      border-color: var(--muted);
+    }
+    .form input[name="ticker"] { width: 120px; }
+    .form input[name="target"] { width: 100px; }
+    .form input[name="current"] { width: 100px; }
+    .btn {
+      padding: 0.6rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: var(--green);
+      color: var(--bg);
+    }
+    .btn:hover { opacity: 0.9; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    td {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    td.editable {
+      cursor: text;
+      min-width: 90px;
+      border-radius: 4px;
+    }
+    td.editable:hover { background: rgba(255,255,255,0.04); }
+    td.editable:focus-within { outline: 2px solid var(--muted); outline-offset: -2px; }
+    td.editable input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: inherit;
+      font-family: inherit;
+      font-size: inherit;
+      padding: 0;
+    }
+    td.editable input:focus { outline: none; }
+    .distance { min-width: 80px; }
+    .distance.positive { color: var(--green); }
+    .distance.negative { color: var(--orange); }
+    .distance.zero { color: var(--green); }
+    .btn-remove {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.25rem;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .btn-remove:hover { color: var(--orange); }
+    .btn-outline {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover { color: var(--text); border-color: var(--muted); }
+    .btn-outline:disabled { opacity: 0.5; cursor: not-allowed; }
+    .fetch-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+    .fetch-status { font-size: 0.85rem; color: var(--muted); }
+    /* Alert states */
+    tr.alert-green { background: rgba(63, 185, 80, 0.12); }
+    tr.alert-green.pulse { animation: pulseGreen 1.5s ease-in-out infinite; }
+    tr.alert-yellow { background: rgba(210, 153, 34, 0.12); }
+    tr.alert-yellow.pulse { animation: pulseYellow 1.5s ease-in-out infinite; }
+    tr.alert-orange { background: rgba(219, 109, 40, 0.12); }
+    tr.alert-orange.pulse { animation: pulseOrange 1.5s ease-in-out infinite; }
+    tr.alert-dark { background: rgba(72, 79, 88, 0.15); }
+    @keyframes pulseGreen {
+      0%, 100% { background: rgba(63, 185, 80, 0.12); }
+      50% { background: rgba(63, 185, 80, 0.25); }
+    }
+    @keyframes pulseYellow {
+      0%, 100% { background: rgba(210, 153, 34, 0.12); }
+      50% { background: rgba(210, 153, 34, 0.25); }
+    }
+    @keyframes pulseOrange {
+      0%, 100% { background: rgba(219, 109, 40, 0.12); }
+      50% { background: rgba(219, 109, 40, 0.25); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-type="module">
+    const { useState, useCallback } = React;
+
+    const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+    const YAHOO_CHART = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+
+    function toYahooSymbol(ticker) {
+      const t = ticker.trim().toUpperCase();
+      return t.includes('.') ? t : t + '.NS';
+    }
+
+    async function fetchPriceFromYahoo(ticker) {
+      const symbol = toYahooSymbol(ticker);
+      const url = CORS_PROXY + encodeURIComponent(YAHOO_CHART + symbol);
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const result = data?.chart?.result?.[0];
+        if (!result) return null;
+        const price = result.meta?.regularMarketPrice ?? result.indicators?.quote?.[0]?.close?.slice(-1)?.[0];
+        return price != null ? Number(price).toFixed(2) : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function getAlertState(current, target) {
+      if (current == null || current === '' || target == null || target === '' || +target <= 0) return 'dark';
+      const cur = +current;
+      const tgt = +target;
+      const pct = ((cur - tgt) / tgt) * 100;
+      if (pct >= 0) return 'green';
+      if (pct >= -3) return 'yellow';
+      if (pct >= -8) return 'orange';
+      return 'dark';
+    }
+
+    function getDistancePct(current, target) {
+      if (current == null || current === '' || target == null || target === '' || +target <= 0) return null;
+      const cur = +current;
+      const tgt = +target;
+      return (((cur - tgt) / tgt) * 100).toFixed(2) + '%';
+    }
+
+    function formatDistanceClass(current, target) {
+      const pct = getDistancePct(current, target);
+      if (!pct) return '';
+      const n = parseFloat(pct);
+      if (n >= 0) return 'positive';
+      return 'negative';
+    }
+
+    function Watchlist() {
+      const [rows, setRows] = useState([]);
+      const [ticker, setTicker] = useState('');
+      const [target, setTarget] = useState('');
+      const [current, setCurrent] = useState('');
+      const [fetching, setFetching] = useState(false);
+      const [fetchStatus, setFetchStatus] = useState('');
+
+      const fetchAllPrices = useCallback(async () => {
+        if (rows.length === 0) return;
+        setFetching(true);
+        setFetchStatus('Fetching prices…');
+        let updated = 0;
+        for (let i = 0; i < rows.length; i++) {
+          setFetchStatus(`Fetching ${i + 1}/${rows.length}…`);
+          const price = await fetchPriceFromYahoo(rows[i].ticker);
+          if (price != null) {
+            setRows(r => r.map(x =>
+              x.id === rows[i].id ? { ...x, current: price } : x
+            ));
+            updated++;
+          }
+          await new Promise(r => setTimeout(r, 350));
+        }
+        setFetchStatus(updated > 0 ? `Updated ${updated} price(s)` : 'No prices fetched (proxy may be blocked)');
+        setFetching(false);
+        setTimeout(() => setFetchStatus(''), 3000);
+      }, [rows]);
+
+      const addRow = useCallback(() => {
+        const t = ticker.trim().toUpperCase();
+        if (!t) return;
+        setRows(r => [...r, {
+          id: crypto.randomUUID(),
+          ticker: t,
+          target: target.trim() || '',
+          current: current.trim() || ''
+        }]);
+        setTicker('');
+        setTarget('');
+        setCurrent('');
+      }, [ticker, target, current]);
+
+      const removeRow = useCallback((id) => {
+        setRows(r => r.filter(x => x.id !== id));
+      }, []);
+
+      const updateCurrent = useCallback((id, val) => {
+        setRows(r => r.map(x => x.id === id ? { ...x, current: val } : x));
+      }, []);
+
+      return (
+        <div className="app">
+          <h1>Stock Watchlist</h1>
+          <div className="form">
+            <input
+              name="ticker"
+              placeholder="Ticker (e.g. RELIANCE)"
+              value={ticker}
+              onChange={e => setTicker(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addRow()}
+            />
+            <input
+              name="target"
+              type="text"
+              inputMode="decimal"
+              placeholder="Target price"
+              value={target}
+              onChange={e => setTarget(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addRow()}
+            />
+            <input
+              name="current"
+              type="text"
+              inputMode="decimal"
+              placeholder="Current (opt)"
+              value={current}
+              onChange={e => setCurrent(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addRow()}
+            />
+            <button className="btn" onClick={addRow}>Add</button>
+          </div>
+
+          {rows.length > 0 && (
+            <div className="fetch-row">
+              <button
+                className="btn btn-outline"
+                onClick={fetchAllPrices}
+                disabled={fetching}
+              >
+                {fetching ? '…' : 'Fetch prices'}
+              </button>
+              {fetchStatus && <span className="fetch-status">{fetchStatus}</span>}
+            </div>
+          )}
+
+          <table>
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Target</th>
+                <th>Current</th>
+                <th>Distance %</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(row => {
+                const state = getAlertState(row.current, row.target);
+                const pulse = state === 'green' || state === 'yellow';
+                return (
+                  <tr key={row.id} className={`alert-${state} ${pulse ? 'pulse' : ''}`}>
+                    <td>{row.ticker}</td>
+                    <td>{row.target || '—'}</td>
+                    <td
+                      className="editable"
+                      onClick={e => e.currentTarget.querySelector('input')?.focus()}
+                    >
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={row.current}
+                        onChange={e => updateCurrent(row.id, e.target.value)}
+                        placeholder="—"
+                      />
+                    </td>
+                    <td className={`distance ${formatDistanceClass(row.current, row.target)}`}>
+                      {getDistancePct(row.current, row.target) ?? '—'}
+                    </td>
+                    <td>
+                      <button className="btn-remove" onClick={() => removeRow(row.id)} aria-label="Remove">×</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<Watchlist />);
+  </script>
+</body>
+</html>
